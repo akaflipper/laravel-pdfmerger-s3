@@ -173,19 +173,30 @@ class PDFMerger {
      *
      * @throws \Exception if the given pages aren't correct or the file cannot be located
      */
+    /**
+     * Add a PDF from S3
+     *
+     * @param string $filePath
+     * @param string $pages
+     * @param string|null $orientation
+     * @param int $tempURLMinutes
+     *
+     * @return self
+     *
+     * @throws \Exception if the given pages aren't correct or the file cannot be located
+     */
     public function addPDFFromS3($filePath, $pages = 'all', $orientation = null, $tempURLMinutes = 5) {
         if (Storage::disk('s3')->exists($filePath)) {
             if (!is_array($pages) && strtolower($pages) != 'all') {
                 throw new \Exception("Invalid format for pages: '$pages'");
             }
 
-            $filename = Str::random(40).'.pdf';
-            Storage::disk('local')->put('merger/temp/'.$filename, Storage::disk('s3')->get($filePath));
+            $temporaryUrl = Storage::disk('s3')->temporaryUrl($filePath, Carbon::now()->addMinutes($tempURLMinutes));
 
             $this->aFiles->push([
-                'name'  => Storage::disk('local')->path('merger/temp/'.$filename),
+                'name'  => $temporaryUrl,
                 'pages' => $pages,
-                'orientation' => $orientation,
+                'orientation' => $orientation
             ]);
         } else {
             throw new \Exception("Could not locate PDF on '$filePath'");
